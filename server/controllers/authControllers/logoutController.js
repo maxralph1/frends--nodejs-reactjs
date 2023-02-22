@@ -2,7 +2,9 @@ const User = require('../../models/User');
 
 
 const logoutUser = async (req, res) => {
+    // console.log(req.cookies)
     const cookies = req.cookies;
+    // console.log(cookies);
     if (!cookies?.jwt) return res.sendStatus(204);
     const refreshToken = cookies.jwt;
 
@@ -13,10 +15,12 @@ const logoutUser = async (req, res) => {
         return res.sendStatus(204);
     };
 
-    userFound.refresh_token = '';
-    const result = await userFound.save();
+    // userFound.refresh_token = '';
+    userFound.refresh_token = userFound.refresh_token.filter(rt => rt !== refreshToken);
+    await userFound.save();
     res.clearCookie('jwt', { httpOnly: true, sameSite: 'None', secure: true });
-    res.status(204).json(result);
+    console.log("end");
+    res.sendStatus(204);
 };
 
 

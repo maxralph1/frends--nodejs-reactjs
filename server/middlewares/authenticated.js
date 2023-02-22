@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 
 
-const verifyJWT = (req, res, next) => {
+const authenticated = (req, res, next) => {
     const authHeader = req.headers.authorization || req.headers.Authorization;
     if (!authHeader?.startsWith('Bearer ')) return res.sendStatus(401);
     console.log(authHeader);
@@ -11,12 +11,12 @@ const verifyJWT = (req, res, next) => {
         process.env.ACCESS_TOKEN_SECRET,
         (err, decoded) => {
             if (err) return res.sendStatus(403);
-            req.user = decoded.username;
-            // req.roles = decoded.roles;
+            req.user = decoded.userInfo.username;
+            req.roles = decoded.userInfo.roles;
             next();
         }
     );
 };
 
 
-module.exports = verifyJWT;
+module.exports = authenticated;

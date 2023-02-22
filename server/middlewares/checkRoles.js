@@ -1,4 +1,4 @@
-const verifyRoles = (...allowedRoles) => {
+const checkRoles = (...allowedRoles) => {
     return (req, res, next) => {
         if (!req?.roles) return res.sendStatus(401);
         const rolesArray = [...allowedRoles];
@@ -9,4 +9,4 @@ const verifyRoles = (...allowedRoles) => {
 }
 
 
-module.exports = verifyRoles;
+module.exports = checkRoles;
