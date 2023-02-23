@@ -1,4 +1,5 @@
-const crypto = require("crypto");
+const jwt = require('jsonwebtoken');
+// const crypto = require("crypto");
 const bcrypt = require('bcrypt');
 const User = require('../../models/User');
 // const Token = require('../../models/Token');
@@ -12,9 +13,16 @@ const mailPasswordResetLink = async (req, res) => {
         // if (error) return res.status(400).send(error.details[0].message);
 
         const user = await User.findOne({ email: req.body.email }).exec();
-        if (!user) return res.status(400).send("user with given email doesn't exist");  //perhaps, consider replacing this 
+        if (!user) return res.status(400).send("user with given email doesn't exist");  //perhaps, consider replacing this
+        
+        const passwordResetToken = jwt.sign(
+            { "username": user.username }, 
+            process.env.PASSWORD_RESET_TOKEN_SECRET, 
+            { expiresIn: 10 * 60 }
+        );
 
-        user.password_reset_token = crypto.randomBytes(32).toString("hex");
+        user.password_reset_token = passwordResetToken;
+        // user.password_reset_token = crypto.randomBytes(32).toString("hex");
         // if (!user.password_reset_token) {
         //     user.password_reset_token = crypto.randomBytes(32).toString("hex");
         // } else {
@@ -38,6 +46,8 @@ const mailPasswordResetLink = async (req, res) => {
         <h1>Password reset message</h1>
         
         <p>Click on the following <a href="${process.env.BASE_URL}/api/auth/password-reset/${user.username}/${user.password_reset_token}">link</a> to reset your password.</p>
+
+        <p>Please note that this link expires in 10 minutes.</p>
         </html>
         `;
         await resetPasswordMail(user.email, "Password reset", link);
@@ -51,7 +61,7 @@ const mailPasswordResetLink = async (req, res) => {
 
 
 
-const verifyMailedPasswordResetLink = async (req, res) => {
+const verifyMailedPasswordResetLink = async (req, res, next) => {
     try {
         // const schema = Joi.object({ password: Joi.string().required() });
         // const { error } = schema.validate(req.body);
@@ -59,6 +69,23 @@ const verifyMailedPasswordResetLink = async (req, res) => {
 
         const user = await User.findOne({username: req.params.username, password_reset_token: req.params.token }).exec();
         if (!user) return res.status(400).send("invalid/expired link");
+
+        // jwt.verify(
+        //     user.password_reset_token,
+        //     process.env.PASSWORD_RESET_TOKEN_SECRET,
+        //     (err, decoded) => {
+        //         if (err) return res.sendStatus(403);
+        //         decodedUsername = decoded.username;
+        //         // req.roles = decoded.userInfo.roles;
+        //         next();
+        //     }
+        // );
+
+        try {
+            jwt.verify(user.password_reset_token, process.env.PASSWORD_RESET_TOKEN_SECRET);
+        } catch(err) {
+            return res.status(400).send("verification failed");
+        }
 
         // const token = await User.findOne({ password_reset_token: req.params.token })
 
@@ -68,12 +95,20 @@ const verifyMailedPasswordResetLink = async (req, res) => {
         // });
         // if (!token) return res.status(400).send("Invalid/expired link");
 
+        // if (decodedUsername) res.status(400).send("invalid/expired link 2");
+
+
+
+
         const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
         user.password = hashedPassword;
         user.password_reset_token = '';
 
         await user.save();
+
+        
+
         // await user.password_reset_token.delete();
 
         res.send("password reset sucessfully.");
