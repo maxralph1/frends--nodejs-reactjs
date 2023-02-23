@@ -11,7 +11,7 @@ const userSchema = new Schema({
         level2: Number,
         level3: Number
     },
-    email_verified: String,
+    email_verified: Date,
     refresh_token: [String],
     password_reset_token: String,
     email_verify_token: String

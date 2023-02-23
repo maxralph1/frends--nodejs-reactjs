@@ -1,6 +1,6 @@
 const nodemailer = require("nodemailer");
 
-const resetPasswordMail = async (email, subject, html) => {
+const sendMail = async (senderEmail, recipientEmail, subject, html) => {
     try {
         // const transporter = nodemailer.createTransport({
             //   // host​:​ ​"​smtp.gmail.com​"​,
@@ -25,8 +25,8 @@ const resetPasswordMail = async (email, subject, html) => {
         
 
         await transporter.sendMail({
-            from: process.env.EMAIL_ADDRESS,
-            to: email,
+            from: senderEmail,
+            to: recipientEmail,
             subject: subject,
             html: html,
         });
@@ -37,4 +37,4 @@ const resetPasswordMail = async (email, subject, html) => {
     }
 };
 
-module.exports = resetPasswordMail;
+module.exports = sendMail;

@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const User = require('../../models/User');
 // const Token = require('../../models/Token');
-const resetPasswordMail = require('../../mailers/resetPasswordMail');
+const sendMail = require('../../mailers/sendMail');
 
 
 const mailPasswordResetLink = async (req, res) => {
@@ -41,7 +41,9 @@ const mailPasswordResetLink = async (req, res) => {
         //     }).save();
         // }
 
-        const link = `
+        const mailSubject = "Password Reset Request Link";
+
+        const mailBody = `
         <html>
         <h1>Password reset message</h1>
         
@@ -50,7 +52,7 @@ const mailPasswordResetLink = async (req, res) => {
         <p>Please note that this link expires in 10 minutes.</p>
         </html>
         `;
-        await resetPasswordMail(user.email, "Password reset", link);
+        await sendMail(process.env.EMAIL_ADDRESS, user.email, mailSubject, mailBody);
 
         res.send("Password reset link has been sent to your email");
     } catch (error) {
@@ -61,25 +63,14 @@ const mailPasswordResetLink = async (req, res) => {
 
 
 
-const verifyMailedPasswordResetLink = async (req, res, next) => {
+const verifyMailedPasswordResetLink = async (req, res) => {
     try {
         // const schema = Joi.object({ password: Joi.string().required() });
         // const { error } = schema.validate(req.body);
         // if (error) return res.status(400).send(error.details[0].message);
 
-        const user = await User.findOne({username: req.params.username, password_reset_token: req.params.token }).exec();
+        const user = await User.findOne({ username: req.params.username, password_reset_token: req.params.token }).exec();
         if (!user) return res.status(400).send("invalid/expired link");
-
-        // jwt.verify(
-        //     user.password_reset_token,
-        //     process.env.PASSWORD_RESET_TOKEN_SECRET,
-        //     (err, decoded) => {
-        //         if (err) return res.sendStatus(403);
-        //         decodedUsername = decoded.username;
-        //         // req.roles = decoded.userInfo.roles;
-        //         next();
-        //     }
-        // );
 
         try {
             jwt.verify(user.password_reset_token, process.env.PASSWORD_RESET_TOKEN_SECRET);
@@ -87,12 +78,6 @@ const verifyMailedPasswordResetLink = async (req, res, next) => {
             return res.status(400).send("verification failed");
         }
 
-        // const token = await User.findOne({ password_reset_token: req.params.token })
-
-        // const token = await Token.findOne({
-        //     userId: user._id,
-        //     token: req.params.token,
-        // });
         // if (!token) return res.status(400).send("Invalid/expired link");
 
         // if (decodedUsername) res.status(400).send("invalid/expired link 2");

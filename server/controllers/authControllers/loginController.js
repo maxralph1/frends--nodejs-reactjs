@@ -11,6 +11,8 @@ const loginUser = async (req, res) => {
 
     if (!userFound) return res.status(401).json({ "message": "Access denied. Check your credentials" });
 
+    if (!userFound.email_verified) return res.status(401).json({ "message": "You must verify your email before you can login." })
+
     const match = await bcrypt.compare(password, userFound.password);
 
     if (match) {
