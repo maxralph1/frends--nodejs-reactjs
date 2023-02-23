@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 
 
 const registerUser = async (req, res) => {
-    const { username, password, type } = req.body;
+    const { username, email, password, type } = req.body;
 
     const duplicateUser = await User.findOne({ username }).exec();
     if (duplicateUser) {
@@ -13,7 +13,7 @@ const registerUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await new User({
-        username, password: hashedPassword, roles: type
+        username, email, password: hashedPassword, roles: type
     });
 
     user.save((err) => {
