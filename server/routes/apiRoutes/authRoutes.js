@@ -4,15 +4,19 @@ const registerController = require('../../controllers/authControllers/registerCo
 const verifyEmailController = require('../../controllers/authControllers/verifyEmailController');
 const loginController = require('../../controllers/authControllers/loginController');
 const logoutController = require('../../controllers/authControllers/logoutController');
-const passwordResetController = require('../../controllers/authControllers/passwordResetController')
+const passwordResetController = require('../../controllers/authControllers/passwordResetController');
+const refreshTokenController = require('../../controllers/authControllers/refreshTokenController')
+
 
 
 router.post('/register', registerController.registerUser);
 router.post('/verify-email/:username/:token', verifyEmailController.verifyMailLinkAuthenticate);
-router.get('/logout', logoutController.logoutUser);
 router.post('/login', loginController.loginUser);
+router.get('/logout', logoutController.logoutUser);
 router.post('/password-reset', passwordResetController.mailPasswordResetLink);
 router.post('/password-reset/:username/:token', passwordResetController.verifyMailedPasswordResetLink);
+router.get('/refresh-token', refreshTokenController.refreshTokenHandler );
+// router.all('/refresh-token', refreshTokenController.refreshTokenHandler );
 
 
 

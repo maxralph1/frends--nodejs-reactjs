@@ -7,7 +7,7 @@ const userSchema = new Schema({
     email: String,
     password: { type: String, required: true },
     roles: {
-        level1: { type: Number, default: 1000},
+        level1: Number,
         level2: Number,
         level3: Number
     },

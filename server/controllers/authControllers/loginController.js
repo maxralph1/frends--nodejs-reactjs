@@ -1,10 +1,19 @@
 const User = require('../../models/User');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const loginUserSchema = require('../../requestValidators/loginUserValidator');
 
 
 const loginUser = async (req, res) => {
     const cookies = req.cookies;
+
+    try {
+        const value = await loginUserSchema.validateAsync({ username: req.body.username, 
+                                                            password: req.body.password });
+    } catch (error) {
+        return res.status(400).json({ "message": "Validation failed", "details": `${error}` });
+    }
+
     const { username, password } = req.body;
 
     const userFound = await User.findOne({ username }).exec();

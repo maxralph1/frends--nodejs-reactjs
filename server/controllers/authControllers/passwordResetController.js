@@ -1,9 +1,8 @@
-const jwt = require('jsonwebtoken');
-// const crypto = require("crypto");
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const User = require('../../models/User');
-// const Token = require('../../models/Token');
-const sendMail = require('../../mailers/sendMail');
+const sendMail = require('../../mails/sendMail');
+const passwordResetMailTemplate = require('../../mails/templates/passwordResetMail');
 
 
 const mailPasswordResetLink = async (req, res) => {
@@ -13,7 +12,7 @@ const mailPasswordResetLink = async (req, res) => {
         // if (error) return res.status(400).send(error.details[0].message);
 
         const user = await User.findOne({ email: req.body.email }).exec();
-        if (!user) return res.status(400).send("user with given email doesn't exist");  //perhaps, consider replacing this
+        if (!user) return res.status(400).json({ "message": "Password reset link has been sent to your email if you have an account with us" });  // although this stops the process and does not send a verification email, it is done for security purposes in order not to expose to the potential harmful user, the existence of an account. We could consider removing the laat line, "if you have an account with us"
         
         const passwordResetToken = jwt.sign(
             { "username": user.username }, 
@@ -22,42 +21,16 @@ const mailPasswordResetLink = async (req, res) => {
         );
 
         user.password_reset_token = passwordResetToken;
-        // user.password_reset_token = crypto.randomBytes(32).toString("hex");
-        // if (!user.password_reset_token) {
-        //     user.password_reset_token = crypto.randomBytes(32).toString("hex");
-        // } else {
-        //     let oldToken = user.password_reset_token;
-        //     oldToken.delete();
-        //     user.password_reset_token = crypto.randomBytes(32).toString("hex");
-        // }
-
         await user.save();
-
-        // let token = await Token.findOne({ userId: user._id });
-        // if (!token) {
-        //     token = await new Token({
-        //         userId: user._id,
-        //         token: crypto.randomBytes(32).toString("hex"),
-        //     }).save();
-        // }
 
         const mailSubject = "Password Reset Request Link";
 
-        const mailBody = `
-        <html>
-        <h1>Password reset message</h1>
-        
-        <p>Click on the following <a href="${process.env.BASE_URL}/api/auth/password-reset/${user.username}/${user.password_reset_token}">link</a> to reset your password.</p>
-
-        <p>Please note that this link expires in 10 minutes.</p>
-        </html>
-        `;
+        const mailBody = passwordResetMailTemplate(user);
         await sendMail(process.env.EMAIL_ADDRESS, user.email, mailSubject, mailBody);
 
-        res.send("Password reset link has been sent to your email");
+        res.status(200).json({ "message": "Password reset link has been sent to your email" });
     } catch (error) {
-        res.send("An error occured");
-        console.log(error);
+        res.status(400).json({ "message": "An error occured", "details": `${error}` });
     }
 };
 
@@ -70,36 +43,23 @@ const verifyMailedPasswordResetLink = async (req, res) => {
         // if (error) return res.status(400).send(error.details[0].message);
 
         const user = await User.findOne({ username: req.params.username, password_reset_token: req.params.token }).exec();
-        if (!user) return res.status(400).send("invalid/expired link");
+        if (!user) return res.status(400).json({ "message": "Invalid/expired link" });
 
         try {
             jwt.verify(user.password_reset_token, process.env.PASSWORD_RESET_TOKEN_SECRET);
-        } catch(err) {
-            return res.status(400).send("verification failed");
+        } catch(error) {
+            return res.status(400).json({ "message": "Invalid/expired link", "details": `${error}` });
         }
-
-        // if (!token) return res.status(400).send("Invalid/expired link");
-
-        // if (decodedUsername) res.status(400).send("invalid/expired link 2");
-
-
-
 
         const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
         user.password = hashedPassword;
         user.password_reset_token = '';
-
         await user.save();
 
-        
-
-        // await user.password_reset_token.delete();
-
-        res.send("password reset sucessfully.");
+        res.json({ "message": "Password reset sucessfully" });
     } catch (error) {
-        res.send("An error occured");
-        console.log(error);
+        res.status(400).json({ "message": "An error occured", "details": `${error}` });
     }
 };
 
