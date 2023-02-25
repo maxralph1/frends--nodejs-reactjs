@@ -1,8 +1,5 @@
 const Joi = require('joi');
-// const tlds = require('../utils/emailTLDS');
 
-
-// const validator = (schema) => (payload) => schema.validate(payload, { abortEarly: false });
 
 const registerUserSchema = Joi.object({
     username: Joi.string().alphanum().min(3).max(30).required(),
@@ -14,4 +11,3 @@ const registerUserSchema = Joi.object({
 
 
 module.exports = registerUserSchema;
-// exports.validateRegister = validator(registerSchema);

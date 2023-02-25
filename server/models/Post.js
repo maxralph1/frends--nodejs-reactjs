@@ -4,11 +4,12 @@ const Schema = mongoose.Schema;
 
 const postSchema = new Schema({
         body: { type: String, required: true },
-        picture_path: String,
+        picture_path: { type: String, default: '' },
         location: String,
         likes: {
             type: Map,
-            of: { type: Schema.Types.ObjectId, ref: 'User' }
+            of: Boolean,
+            by: { type: Schema.Types.ObjectId, ref: 'User', required: true }
         },
         comments: {
             type: Array,
@@ -17,7 +18,7 @@ const postSchema = new Schema({
         user: { type: Schema.Types.ObjectId, ref: 'User', required: true }
     },
     {
-        timestamps: { createdAt:'created_at', updatedAt: 'updated_at' }
+        timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
     }
 );
 
