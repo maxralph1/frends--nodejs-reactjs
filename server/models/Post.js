@@ -4,7 +4,11 @@ const Schema = mongoose.Schema;
 
 const postSchema = new Schema({
         body: { type: String, required: true },
-        picture_path: { type: String, default: '' },
+        // picture_path: { type: String, default: '' },
+        picture_path: { 
+            public_id: { type: String, default: '' },
+            url: { type: String, default: '' }
+        },
         location: String,
         likes: {
             type: Map,
