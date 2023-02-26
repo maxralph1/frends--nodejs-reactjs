@@ -1,5 +1,7 @@
 const User = require('../models/User');
 const cloudinaryImageUpload = require('../config/imageUpload/cloudinary');
+const createUserSchema = require('../requestValidators/user/createUserValidator');
+const updateUserSchema = require('../requestValidators/user/updateUserValidator');
 
 
 const getAllUsers = async (req, res) => {
@@ -51,7 +53,20 @@ const getUserFriends = async (req, res) => {
 };
 
 const createUser = async (req, res) => {
-    const { username, first_name, other_names, last_name, email, image, type, location } = req.body;
+    try {
+        const value = await createUserSchema.validateAsync({ username: req.body.username, 
+                                                            first_name: req.body.first_name,
+                                                            other_names: req.body.other_names,
+                                                            last_name: req.body.last_name,
+                                                            email: req.body.email,
+                                                            password: req.body.password,
+                                                            type: req.body.type,
+                                                            location: req.body.location });
+    } catch (error) {
+        return res.status(400).json({ "message": "Validation failed", "details": `${error}` });
+    }
+    
+    const { username, first_name, other_names, last_name, email, password, image, type, location } = req.body;
 
     const imageUpload = await cloudinaryImageUpload(image, "post_images");
     if (!imageUpload) return res.status(409).json({ "message": "Image upload failed" });
@@ -74,6 +89,7 @@ const createUser = async (req, res) => {
         other_names,
         last_name,
         email,
+        password,
         picture_path: {
             public_id: imageUpload.public_id,
             url: imageUpload.secure_url
@@ -92,6 +108,19 @@ const createUser = async (req, res) => {
 };
 
 const updateUser = async (req, res) => {
+    try {
+        const value = await updateUserSchema.validateAsync({ username: req.body.username, 
+                                                            first_name: req.body.first_name,
+                                                            other_names: req.body.other_names,
+                                                            last_name: req.body.last_name,
+                                                            email: req.body.email,
+                                                            password: req.body.password,
+                                                            type: req.body.type,
+                                                            location: req.body.location });
+    } catch (error) {
+        return res.status(400).json({ "message": "Validation failed", "details": `${error}` });
+    }
+
     const { user } = req.params;
 
     const { username, first_name, other_names, last_name, email, image, type, location } = req.body;

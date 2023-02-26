@@ -1,6 +1,8 @@
 const Post = require('../models/Post');
 const User = require('../models/User');
 const cloudinaryImageUpload = require('../config/imageUpload/cloudinary');
+const createPostSchema = require('../requestValidators/posts/createPostValidator');
+const updatePostSchema = require('../requestValidators/posts/updatePostValidator');
 
 
 const getAllPosts = async (req, res) => {
@@ -33,6 +35,14 @@ const getUserPosts = async (req, res) => {
 };
 
 const createPost = async (req, res) => {
+    try {
+        const value = await createPostSchema.validateAsync({ body: req.body.body, 
+                                                            image: req.body.image,
+                                                            location: req.body.location });
+    } catch (error) {
+        return res.status(400).json({ "message": "Validation failed", "details": `${error}` });
+    }
+
     const { body, image, location } = req.body;
 
     const user = await User.findOne({ _id: req.user._id }).exec();
@@ -60,6 +70,14 @@ const createPost = async (req, res) => {
 };
 
 const updatePost = async (req, res) => {
+    try {
+        const value = await updatePostSchema.validateAsync({ body: req.body.body, 
+                                                            image: req.body.image,
+                                                            location: req.body.location });
+    } catch (error) {
+        return res.status(400).json({ "message": "Validation failed", "details": `${error}` });
+    }
+
     const { id } = req.params;
 
     const { body, image, location } = req.body;
