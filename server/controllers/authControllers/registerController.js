@@ -13,7 +13,7 @@ const registerUser = async (req, res) => {
                                                     password: req.body.password,
                                                     type: req.body.type });
     } catch (error) {
-        return res.status(400).json({ "message": "Validation failed", "details": `${error}` });
+        return res.status(400).json({ message: "Validation failed", details: `${error}` });
     }
 
     const { username, email, password, type } = req.body;
@@ -22,9 +22,9 @@ const registerUser = async (req, res) => {
     const duplicateEmail = await User.findOne({ email }).exec();
 
     if (duplicateUsername) {
-        return res.status(409).json({ "message": `Username ${duplicateUsername.username} already exists` });
+        return res.status(409).json({ message: `Username ${duplicateUsername.username} already exists` });
     } else if (duplicateEmail) {
-        return res.status(409).json({ "message": `User email ${duplicateEmail.email} already exists` });
+        return res.status(409).json({ message: `User email ${duplicateEmail.email} already exists` });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -57,9 +57,9 @@ const registerUser = async (req, res) => {
 
     user.save((error) => {
         if (error) {
-            return res.status(400).json({ "message": "An error occured", "details": `${error}` });
+            return res.status(400).json({ message: "An error occured", details: `${error}` });
         }
-        res.status(201).json({ "message": `User ${user.username} created` });
+        res.status(201).json({ message: `User ${user.username} created` });
     });
 
     (async function () {

@@ -2,6 +2,9 @@ const Joi = require('joi');
 
 
 const updateUserSchema = Joi.object({
+    // param
+    user: Joi.string(),
+    // body
     username: Joi.string().alphanum().min(3).max(30),
     first_name: Joi.string().min(1).max(30),
     other_names: Joi.string().min(1).max(30),

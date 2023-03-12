@@ -1,7 +1,7 @@
 const roles = {
-    'level3': 3000,
-    'level2': 2000,
-    'level1': 1000
+    'admin': 'level3',
+    'business': 'level2',
+    'individual': 'level1'
 }
 
 module.exports = roles;

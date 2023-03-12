@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('express-async-errors');
 const express = require('express');
 const app = express();
 const helmet = require('helmet');
@@ -8,8 +9,10 @@ const path = require('path');
 const rfs = require('rotating-file-stream');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const { logEvents } = require('./config/errorLogger')
+const errorLoggerHandler = require('./config/errorLoggerHandler')
 const corsOptions = require('./config/corsOptions');
-const credentials = require('./middlewares/credentials');
+const credentials = require('./middleware/credentials');
 const mongoose = require('mongoose');
 const dbConnection = require('./config/dbConnect');
 const PORT = process.env.PORT || 5000;
@@ -25,40 +28,45 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-
-// create a rotating write stream
 let accessLogStream = rfs.createStream('access.log', {
   interval: '1d', // rotate daily
-  path: path.join(__dirname, 'log')
+  path: path.join(__dirname, 'log/access')
 })
- 
-// setup the logger and make the date correspond to "iso" instead of the default "clf" format of the "combined" log format
-app.use(morgan(':remote-addr - :remote-user [:date[iso]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"', { stream: accessLogStream }))
-
+app.use(morgan(':remote-addr - :remote-user [:date[iso]] ":method :url HTTP/:http-version" :status ":res[content-length] - :response-time ms" ":referrer" ":user-agent"', { stream: accessLogStream }))
 
 dbConnection();
 
-
 app.disable('x-powered-by');
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(credentials);
 app.use(cors(corsOptions));
-app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-
+app.use('/', express.static(path.join(__dirname, 'public')))
+app.use('/api/', express.static(path.join(__dirname, 'public')))
 
 app.use('/api', require('./routes/api'));
 
+app.all('*', (req, res) => {
+    res.status(404)
+    if (req.accepts('html')) {
+        res.sendFile(path.join(__dirname, 'views', '404.html'))
+    } else if (req.accepts('json')) {
+        res.json({ message: '404 Not Found' })
+    } else {
+        res.type('txt').send('404 Not Found')
+    }
+})
 
-
-app.use((err, req, res, next) => {
-    res.status(500).json({ "message": err.message });
-});
-
-
+app.use(errorLoggerHandler)
 
 mongoose.connection.once('open', () => {
     console.log('Database connection established');
     app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
 });
+
+mongoose.connection.on('error', err => {
+    console.log(err)
+    logEvents(`${err.no}: ${err.code}\t${err.syscall}\t${err.hostname}`, 'mongoErrLog.log')
+})

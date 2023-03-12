@@ -5,69 +5,45 @@ const loginUserSchema = require('../../requestValidators/auth/loginUserValidator
 
 
 const loginUser = async (req, res) => {
-    const cookies = req.cookies;
-
+    let validatedData;
     try {
-        const value = await loginUserSchema.validateAsync({ username: req.body.username, 
+        validatedData = await loginUserSchema.validateAsync({ username: req.body.username, 
                                                             password: req.body.password });
     } catch (error) {
-        return res.status(400).json({ "message": "Validation failed", "details": `${error}` });
+        return res.status(400).json({ message: "Validation failed", details: `${error}` });
     }
 
-    const { username, password } = req.body;
+    const userFound = await User.findOne({ username: validatedData.username }).exec();
 
-    const userFound = await User.findOne({ username }).exec();
+    if (!userFound || !userFound.active) return res.status(401).json({ message: "Unauthorized" });
 
-    if (!userFound) return res.status(401).json({ "message": "Access denied. Check your credentials" });
+    if (!userFound.email_verified) return res.status(401).json({ message: "You must verify your email before you can login." })
 
-    if (!userFound.email_verified) return res.status(401).json({ "message": "You must verify your email before you can login." })
+    const match = await bcrypt.compare(validatedData.password, userFound.password);
 
-    const match = await bcrypt.compare(password, userFound.password);
+    if (!match) return res.status(401).json({ message: "Unauthorized" })
 
-    if (match) {
-        const roles = Object.values(userFound.roles);
-        const accessToken = jwt.sign(
-            {
-                "userInfo": {
-                    "username": userFound.username,
-                    "roles": roles
-                }
-            }, 
-            process.env.ACCESS_TOKEN_SECRET, 
-            { expiresIn: 5 * 60 }
-        );
-        const newRefreshToken = jwt.sign(
-            { "username": userFound.username }, 
-            process.env.REFRESH_TOKEN_SECRET, 
-            { expiresIn: 15 * 60 }
-        );
-
-        let newRefreshTokenArray = 
-            !cookies?.jwt 
-                ? userFound.refresh_token
-                : userFound.refresh_token.filter(rt => rt !== cookies.jwt);
-
-        if (cookies?.jwt) {
-            const refreshToken = cookies.jwt;
-            const tokenFound = await User.findOne({ refresh_token: refreshToken }).exec();
-
-            if (!tokenFound) {
-                newRefreshTokenArray = [];
+    const accessToken = jwt.sign(
+        {
+            "userInfo": {
+                "username": userFound.username,
+                "roles": userFound.roles
             }
+        }, 
+        process.env.ACCESS_TOKEN_SECRET, 
+        { expiresIn: 5 * 60 }
+    );
 
-            res.clearCookie('jwt', { httpOnly: true, sameSite: 'None', secure: true });
-        }
+    const refreshToken = jwt.sign(
+        { "username": userFound.username }, 
+        process.env.REFRESH_TOKEN_SECRET, 
+        { expiresIn: 60 * 60 }
+    );
+    
+    res.cookie('jwt', refreshToken, { httpOnly: true, secure: false, sameSite: 'None', maxAge: 1 * 60 * 60 * 1000 });
+    // res.cookie('jwt', refreshToken, { httpOnly: true, secure: true, sameSite: 'None', maxAge: 1 * 60 * 60 * 1000 });
 
-        userFound.refresh_token = [...newRefreshTokenArray, newRefreshToken];
-
-        const result = await userFound.save();
-        
-        res.cookie('jwt', newRefreshToken, { httpOnly: true, sameSite: 'None', secure: true, maxAge: 24 * 60 * 60 * 1000 });
-
-        res.json({ roles, accessToken });
-    } else {
-        return res.status(401).json({ "message": "Access denied" });
-    }
+    res.json({ accessToken });
 };
 
 

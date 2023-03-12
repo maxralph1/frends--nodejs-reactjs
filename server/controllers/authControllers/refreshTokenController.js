@@ -1,68 +1,48 @@
 const User = require('../../models/User');
 const jwt = require('jsonwebtoken');
+const cookiesSchema = require('../../requestValidators/auth/cookiesValidator')
 
 
 const refreshTokenHandler = async (req, res) => {
-    const cookies = req.cookies;
-    if (!cookies?.jwt) return res.sendStatus(401);
-    const refreshToken = cookies.jwt;
-    res.clearCookie('jwt', { httpOnly: true, sameSite: 'None', secure: true });
 
-    const userFound = await User.findOne({ refresh_token: refreshToken }).exec();
-
-    if (!userFound) {
-        jwt.verify(
-            refreshToken,
-            process.env.REFRESH_TOKEN_SECRET,
-            async (err, decoded) => {
-                if (err) return res.sendStatus(403);
-                const compromisedUser = await User.findOne({ username: decoded.username }).exec();
-                compromisedUser.refresh_token = [];
-                // At this stage, implement an automated email notification to inform the owner that their account has likely been compromised and that they should consider resetting their password
-                await compromisedUser.save();
-            }
-        )
-        return res.sendStatus(403);
+    let validatedData;
+    try {
+        validatedData = await cookiesSchema.validateAsync({ cookies: req.cookies });
+    } catch (error) {
+        return res.status(400).json({ message: "Cookie validation failed", details: `${error}` });
     }
 
-    const newRefreshTokenArray = userFound.refresh_token.filter(rt => rt !== refreshToken);
+    const cookies = validatedData.cookies;
+
+    if (!cookies?.jwt) return res.status(401).json({ message: "Unauthorized" });
+
+    const refreshToken = cookies.jwt;
 
     jwt.verify(
         refreshToken,
         process.env.REFRESH_TOKEN_SECRET,
         async (err, decoded) => {
-            if (err) {
-                userFound.refresh_token = [...newRefreshTokenArray];
-                await userFound.save();
-            }
-            if (err || userFound.username !== decoded.username) return res.sendStatus(403);
+            if (err) return res.status(403).json({ message: "Forbidden" });
 
-            const roles = Object.values(userFound.roles);
+            const userFound = await User.findOne({ username: decoded.username }).exec();
+
+            if (!userFound) return res.status(401).json({ message: "Unauthorized" })
+
             const accessToken = jwt.sign(
                 {
                     "userInfo": {
-                        "username": decoded.username,
-                        "roles": roles
+                        "username": userFound.username,
+                        "roles": userFound.roles
                     }
                 },
                 process.env.ACCESS_TOKEN_SECRET,
                 { expiresIn: 5 * 60 }
-            );
+            )
 
-            const newRefreshToken = jwt.sign(
-                { "username": userFound.username },
-                process.env.REFRESH_TOKEN_SECRET,
-                { expiresIn: 20 * 60 }
-            );
-
-            userFound.refresh_token = [...newRefreshTokenArray, newRefreshToken];
-            await userFound.save();
-
-            res.cookie('jwt', newRefreshToken, { httpOnly: true, secure: true, sameSite: 'None', maxAge: 24 * 60 * 60 *1000 });
-
-            res.json({ roles, accessToken })
+            res.json({ accessToken })
         }
-    );
+    )
 }
+
 
 module.exports = { refreshTokenHandler }

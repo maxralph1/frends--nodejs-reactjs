@@ -22,12 +22,11 @@ const verifyMailLinkAuthenticate = async (req, res) => {
 
         await user.save();
 
-        res.json({ "message": "Email verified sucessfully" });
+        res.json({ message: "Email verified sucessfully" });
     } catch (error) {
-        res.status(400).json({ "message": "An error occured", "details": `${error}` });
+        res.status(400).json({ message: "An error occured", details: `${error}` });
     }
 };
-
 
 
 module.exports = { verifyMailLinkAuthenticate }
