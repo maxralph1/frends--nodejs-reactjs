@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+
 const dbConnection = async () => {
     mongoose.set('sanitizeFilter', true);
     mongoose.set('strictQuery', false);
@@ -13,5 +14,6 @@ const dbConnection = async () => {
         console.error(error)
     }
 }
+
 
 module.exports = dbConnection;

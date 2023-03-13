@@ -10,9 +10,8 @@ const rfs = require('rotating-file-stream');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const { logEvents } = require('./config/errorLogger')
-const errorLoggerHandler = require('./config/errorLoggerHandler')
+const errorLogHandler = require('./config/errorLogHandler')
 const corsOptions = require('./config/corsOptions');
-const credentials = require('./middleware/credentials');
 const mongoose = require('mongoose');
 const dbConnection = require('./config/dbConnect');
 const PORT = process.env.PORT || 5000;
@@ -39,12 +38,11 @@ dbConnection();
 app.disable('x-powered-by');
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(credentials);
 app.use(cors(corsOptions));
 app.use(cookieParser());
 
 app.use('/', express.static(path.join(__dirname, 'public')))
-app.use('/api/', express.static(path.join(__dirname, 'public')))
+app.use('/api', express.static(path.join(__dirname, 'public')))
 
 app.use('/api', require('./routes/api'));
 
@@ -59,7 +57,7 @@ app.all('*', (req, res) => {
     }
 })
 
-app.use(errorLoggerHandler)
+app.use(errorLogHandler)
 
 mongoose.connection.once('open', () => {
     console.log('Database connection established');
@@ -69,4 +67,4 @@ mongoose.connection.once('open', () => {
 mongoose.connection.on('error', err => {
     console.log(err)
     logEvents(`${err.no}: ${err.code}\t${err.syscall}\t${err.hostname}`, 'mongoErrLog.log')
-})
+});

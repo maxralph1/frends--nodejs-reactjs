@@ -4,4 +4,5 @@ const roles = {
     'individual': 'level1'
 }
 
+
 module.exports = roles;

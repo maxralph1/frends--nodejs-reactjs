@@ -80,4 +80,3 @@ const verifyMailedPasswordResetLink = async (req, res) => {
 
 
 module.exports = { mailPasswordResetLink, verifyMailedPasswordResetLink };
-
