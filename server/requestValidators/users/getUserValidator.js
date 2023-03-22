@@ -2,7 +2,7 @@ const Joi = require('joi');
 
 
 const getUserSchema = Joi.object({
-    username: Joi.string()
+    user: Joi.string()
 });
 
 

@@ -11,7 +11,9 @@ const authenticated = (req, res, next) => {
         process.env.ACCESS_TOKEN_SECRET,
         (err, decoded) => {
             if (err) return res.sendStatus(403);
-            req.user = decoded.userInfo.username;
+            // req.user = decoded.userInfo.username;
+            req.user_id = decoded.userInfo.user_id;
+            req.username = decoded.userInfo.username;
             req.roles = decoded.userInfo.roles;
             next();
         }

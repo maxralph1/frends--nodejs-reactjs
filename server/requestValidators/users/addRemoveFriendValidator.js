@@ -2,7 +2,7 @@ const Joi = require('joi');
 
 
 const addRemoveFriendSchema = Joi.object({
-    id: Joi.string(),
+    userId: Joi.string(),
     friendId: Joi.string()
 });
 

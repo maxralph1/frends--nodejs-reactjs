@@ -1,7 +1,7 @@
 const roles = {
-    'admin': 'level3',
-    'business': 'level2',
-    'individual': 'level1'
+    admin: 'level3',
+    enterprise: 'level2',
+    individual: 'level1'
 }
 
 

@@ -7,21 +7,24 @@ const checkRoles = require('../../middleware/checkRoles')
 
 
 router.route('/')
-        .get(userController.getAllUsers)
-        .post(authenticated, checkRoles(roles.level3), userController.createUser);
+        .get(authenticated, checkRoles(roles.admin), userController.getAllUsers)
+        .post(authenticated, checkRoles(roles.admin), userController.createUser);
 
-router.get('/:searchKey', userController.searchUsers);
-
-router.route('/:username')
-        .get(userController.getUser)
-        .post(authenticated, userController.softDeleteUser)
-        .delete(authenticated, checkRoles(roles.level3), userController.deleteUser);
+router.get('/search/:searchKey', userController.searchUsers);
 
 router.route('/:user')
-        .get(userController.getUserFriends)
-        .put(authenticated, userController.updateUser);
+        .get(userController.getUser)
+        .patch(authenticated, userController.updateUser)
+        .put(authenticated, checkRoles(roles.admin), userController.updateUserAdminAccess)
+        .delete(authenticated, checkRoles(roles.admin), userController.deleteUser);
 
-router.post('/:id/:friendId', authenticated, userController.addRemoveFriend);
+router.get('/:user/friends', userController.getUserFriends);
+
+router.patch('/:user/delete', authenticated, userController.softDeleteUser);
+
+router.patch('/:user/re-activate', authenticated, checkRoles(roles.admin), userController.reactivateSoftDeletedUser);
+
+router.patch('/:userId/friend/:friendId', authenticated, userController.addRemoveFriend);
 
 
 module.exports = router;

@@ -12,25 +12,19 @@ const userSchema = new Schema({
             public_id: { type: String, default: '' },
             url: { type: String, default: '' }
         },
-        roles: {
-            type: [String],
-            default: ["level1"]
-        },
-        // roles: {
-        //     level1: Number,
-        //     level2: Number,
-        //     level3: Number
-        // },
+        roles: { type: [String], default: ['level1'] },
+        verified: { type: Boolean, default: false },
         friends: { type: Array, default: [] },
         location: String,
         occupation: String,
         email_verified: Date,
-        // refresh_token: [ String ],
+        last_time_active: {type: Date, default: Date.now},
+        show_friends: { type: Boolean, default: true },
         password_reset_token: String,
         email_verify_token: String,
         created_by: { type: Schema.Types.ObjectId, ref: 'User' },
         active: { type: Boolean, default: true },
-        deleted: { type: Boolean, default: false }
+        soft_deleted: { type: String, default: null }
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
