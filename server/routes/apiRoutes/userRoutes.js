@@ -26,5 +26,7 @@ router.patch('/:user/re-activate', authenticated, checkRoles(roles.admin), userC
 
 router.patch('/:userId/friend/:friendId', authenticated, userController.addRemoveFriend);
 
+router.patch('/:user/follows', authenticated, userController.followUnfollowUser);
+
 
 module.exports = router;

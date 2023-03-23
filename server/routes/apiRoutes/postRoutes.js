@@ -20,14 +20,11 @@ router.route('/:post')
 
 router.get('/user/:user', postController.getUserPosts);
 
-router.patch('/:post/like', authenticated, postController.likePost)
+router.patch('/:post/reaction', authenticated, postController.reactOnPost);
 
-router.route('/:post/comments/:comment')
-        .put(postController.commentOnPost)
-        .patch(postController.updateCommentOnPost)
+router.patch('/:post/images/:image', postController.updateImageOnPost);
 
-router.route('/:post/delete')
-        .patch(authenticated, postController.softDeletePost);
+router.patch('/:post/delete', authenticated, postController.softDeletePost);
 
 router.patch('/:post/undelete', authenticated, checkRoles(roles.admin), postController.undeleteSoftDeletedPost)
 

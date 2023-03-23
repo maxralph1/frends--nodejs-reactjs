@@ -5,7 +5,7 @@ const updatePostSchema = Joi.object({
     // param
     post: Joi.string(),
     // body
-    body: Joi.string(),
+    body: Joi.string().max(500),
     location: Joi.string()
 });
 

@@ -20,7 +20,7 @@ const updateUserSchema = Joi.object({
     email_verified: Joi.string().max(100),
     show_friends: Joi.string(),
     active: Joi.string(),
-    soft_deleted: Joi.string().max(30)
+    deleted_at: Joi.string().max(30)
 });
 
 

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
+
 const userSchema = new Schema({
         username: { type: String, minLength: 3, maxLength: 12, unique: true, required: true },
         first_name: String,
@@ -20,15 +21,20 @@ const userSchema = new Schema({
         email_verified: Date,
         last_time_active: {type: Date, default: Date.now},
         show_friends: { type: Boolean, default: true },
+        followers: {
+            type: Map,
+            of: Boolean,
+        },
         password_reset_token: String,
         email_verify_token: String,
         created_by: { type: Schema.Types.ObjectId, ref: 'User' },
         active: { type: Boolean, default: true },
-        soft_deleted: { type: String, default: null }
+        deleted_at: { type: String, default: null }
     },
     {
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
     }
 );
+
 
 module.exports = mongoose.model("User", userSchema);

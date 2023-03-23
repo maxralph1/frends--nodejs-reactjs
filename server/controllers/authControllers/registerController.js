@@ -51,7 +51,8 @@ const registerUser = async (req, res) => {
         email: validatedData.email, 
         password: hashedPassword, 
         roles: accountType, 
-        email_verify_token: emailVerifyToken
+        email_verify_token: emailVerifyToken, 
+        followers: {}
     });
 
     user.save((error) => {

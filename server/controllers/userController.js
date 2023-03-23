@@ -166,6 +166,7 @@ const createUser = async (req, res) => {
         occupation: validatedData.occupation,
         email_verified: validatedData.email_verified, 
         show_friends: validatedData.show_friends, 
+        followers: {},
         active: validatedData.active,
         created_by: req.user_id
     });
@@ -266,7 +267,7 @@ const updateUserAdminAccess = async (req, res) => {
                                                             email_verified: req.body.email_verified, 
                                                             show_friends: req.body.show_friends,
                                                             active: req.body.active, 
-                                                            soft_deleted: req.body.soft_deleted });
+                                                            deleted_at: req.body.deleted_at });
     } catch (error) {
         return res.status(400).json({ message: "Validation failed", details: `${error}` });
     }
@@ -317,7 +318,7 @@ const updateUserAdminAccess = async (req, res) => {
     if (validatedData.email_verified) userFound.email_verified = validatedData.email_verified;
     if (validatedData.show_friends) userFound.show_friends = validatedData.show_friends;
     if (validatedData.active) userFound.active = validatedData.active;
-    if (validatedData.soft_deleted) userFound.soft_deleted = validatedData.soft_deleted;
+    if (validatedData.deleted_at) userFound.deleted_at = validatedData.deleted_at;
 
     userFound.save((error) => {
         if (error) {
@@ -371,6 +372,33 @@ const addRemoveFriend = async (req, res) => {
     }
 };
 
+const followUnfollowUser = async (req, res) => {
+    let validatedData;
+    try {
+        validatedData = await getUserSchema.validateAsync({ user: req.params.user });
+    } catch (error) {
+        return res.status(400).json({ message: "Validation failed", details: `${error}` });
+    }
+
+    const user = await User.findOne({ _id: validatedData.user }).exec();
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const isFollowing = user.followers.get(req.user_id);
+
+    if (!isFollowing) {
+        user.followers.set(req.user_id, true);
+    } else {
+        user.followers.delete(req.user_id);
+    }
+
+    user.save((error) => {
+        if (error) {
+            return res.status(400).json(error);
+        }
+        res.status(200).json({ success: "Updated your user follow status", data: user });
+    });
+};
+
 const softDeleteUser = async (req, res) => {
     // Consider using this method for your delete instead of the "deleteUser" method below
 
@@ -391,8 +419,8 @@ const softDeleteUser = async (req, res) => {
 
         if (userFound.active == true) {
             userFound.active = false;
-            // userFound.soft_deleted = Date();
-            userFound.soft_deleted = new Date().toISOString();
+            // userFound.deleted_at = Date();
+            userFound.deleted_at = new Date().toISOString();
         }
 
         userFound.save((error) => {
@@ -418,7 +446,7 @@ const reactivateSoftDeletedUser = async (req, res) => {
 
     if (userFound.active == false) {
         userFound.active = true; 
-        userFound.soft_deleted = ''; 
+        userFound.deleted_at = ''; 
     }
 
     userFound.save((error) => {
@@ -445,11 +473,11 @@ const deleteUser = async (req, res) => {
 
     const post = await Post.find({ user: user._id }).exec();
     if (!user && !post) {
-        return res.status(404).json({ message: `No posts belong to the user`})
+        return res.status(404).json({ message: `Neither post nor user exist`})
     }
 
     if (post) {
-        // Delete all posts belonging to the deleted user if there is any.
+        // Delete all posts belonging to the deleted user if there are any.
         // await post.deleteMany();
         await Post.deleteMany({ user: user._id });
     }
@@ -468,7 +496,8 @@ module.exports = {
     createUser,
     updateUser,
     updateUserAdminAccess,
-    addRemoveFriend,
+    addRemoveFriend, 
+    followUnfollowUser, 
     softDeleteUser,
     reactivateSoftDeletedUser,
     deleteUser

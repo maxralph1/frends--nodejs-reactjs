@@ -2,3 +2,5 @@
 node_modules
 log
 dev-notes.txt
+tmp
+server/tmp

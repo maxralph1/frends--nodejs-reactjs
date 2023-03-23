@@ -1,10 +1,12 @@
 const Post = require('../models/Post');
 const User = require('../models/User');
+const Comment = require('../models/Comment');
 const cloudinaryImageUpload = require('../config/imageUpload/cloudinary');
 const getPostSchema = require('../requestValidators/posts/getPostValidator');
 const getUserSchema = require('../requestValidators/users/getUserValidator');
 const createPostSchema = require('../requestValidators/posts/createPostValidator');
 const updatePostSchema = require('../requestValidators/posts/updatePostValidator');
+const postReactionSchema = require('../requestValidators/posts/postReactionValidator');
 
 
 const getAllPosts = async (req, res) => {
@@ -38,7 +40,7 @@ const getAuthUserPosts = async (req, res) => {
 
     } else if (req.user_id) {
         const posts = await Post.find({ created_by: req.user_id })
-            .select(['-password', '-email_verified', '-soft_deleted', '-active', '-created_by', '-created_at', '-updated_at'])
+            .select(['-password', '-email_verified', '-deleted_at', '-active', '-created_by', '-created_at', '-updated_at'])
             .lean();
 
         if (!posts?.length) {
@@ -83,17 +85,25 @@ const createPost = async (req, res) => {
 
     const urls = []
 
-    for (const file of files) {
-        const imageUpload = await cloudinaryImageUpload(file.tempFilePath, "frends_post_images");
+    if (Array.isArray(files)) {
+        for (const file of files) {
+            const imageUpload = await cloudinaryImageUpload(file.tempFilePath, "frends_post_images");
+            if (!imageUpload) return res.status(409).json({ message: "Image upload failed" });
+            
+            urls.push(imageUpload.secure_url)
+        }
+    } else {
+        const imageUpload = await cloudinaryImageUpload(files.tempFilePath, "frends_post_images");
         if (!imageUpload) return res.status(409).json({ message: "Image upload failed" });
-        
+
         urls.push(imageUpload.secure_url)
     }
-
+    
     const addPost = new Post({
         body: validatedData.body,
         picture_paths: urls,
         location: validatedData.location,
+        reactions: {},
         created_by: req.user_id
     });
 
@@ -130,18 +140,26 @@ const updatePost = async (req, res) => {
 
         const files = req.files.post_photos;
 
-        for (const file of files) {
-            const imageUpload = await cloudinaryImageUpload(file.tempFilePath, "frends_post_images");
+        if (Array.isArray(files)) {
+            for (const file of files) {
+                const imageUpload = await cloudinaryImageUpload(file.tempFilePath, "frends_post_images");
+                if (!imageUpload) return res.status(409).json({ message: "Image upload failed" });
+                
+                urls.push(imageUpload.secure_url)
+            }
+        } else {
+            const imageUpload = await cloudinaryImageUpload(files.tempFilePath, "frends_post_images");
             if (!imageUpload) return res.status(409).json({ message: "Image upload failed" });
-            
+
             urls.push(imageUpload.secure_url)
         }
 
         if (validatedData.body) post.body = validatedData.body;
         if (urls.length) {
-            for (const url of urls) {
-                post.picture_paths.push(url);
-            }
+            // for (const url of urls) {
+            //     post.picture_paths.push(url);
+            // }
+            post.picture_paths = urls;
         }
         if (validatedData.location) post.location = validatedData.location;
 
@@ -172,18 +190,26 @@ const updatePostAdminAccess = async (req, res) => {
 
     const files = req.files.post_photos;
 
-    for (const file of files) {
-        const imageUpload = await cloudinaryImageUpload(file.tempFilePath, "frends_post_images");
+    if (Array.isArray(files)) {
+        for (const file of files) {
+            const imageUpload = await cloudinaryImageUpload(file.tempFilePath, "frends_post_images");
+            if (!imageUpload) return res.status(409).json({ message: "Image upload failed" });
+            
+            urls.push(imageUpload.secure_url)
+        }
+    } else {
+        const imageUpload = await cloudinaryImageUpload(files.tempFilePath, "frends_post_images");
         if (!imageUpload) return res.status(409).json({ message: "Image upload failed" });
-        
+
         urls.push(imageUpload.secure_url)
     }
 
     if (validatedData.body) post.body = validatedData.body;
     if (urls.length) {
-        for (const url of urls) {
-            post.picture_paths.push(url);
-        }
+        // for (const url of urls) {
+        //     post.picture_paths.push(url);
+        // }
+        post.picture_paths = urls;
     }
     if (validatedData.location) post.location = validatedData.location;
 
@@ -195,11 +221,12 @@ const updatePostAdminAccess = async (req, res) => {
     });
 };
 
-const likePost = async (req, res) => {
+const reactOnPost = async (req, res) => {
 
     let validatedData;
     try {
-        validatedData = await getPostSchema.validateAsync({ post: req.params.post });
+        validatedData = await postReactionSchema.validateAsync({ post: req.params.post, 
+                                                                reaction: req.body.reaction });
     } catch (error) {
         return res.status(400).json({ message: "Validation failed", details: `${error}` });
     }
@@ -207,60 +234,168 @@ const likePost = async (req, res) => {
     const post = await Post.findOne({ _id: validatedData.post }).exec();
     if (!post) return res.status(404).json({ message: "Post not found" });
 
-    const isLiked = post.likes.get(req.user_id);
+    const hasReaction = post.reactions.get(req.user_id);
 
-    if (!isLiked) {
-        post.likes.set(req.user_id, true);
-    } else {
-        post.likes.delete(req.user_id);
+    if (!hasReaction) {
+        post.reactions.set(req.user_id, validatedData.reaction);
+    } else if (hasReaction == validatedData.reaction) {
+        post.reactions.delete(req.user_id);
+    } else if (hasReaction != validatedData.reaction) {
+        post.reactions.set(req.user_id, validatedData.reaction);
     }
-
-    // if (isLiked) {
-    //     post.likes.delete(req.user_id);
-    // } else {
-    //     post.likes.set(req.user_id, true);
-    // }
 
     post.save((error) => {
         if (error) {
             return res.status(400).json(error);
         }
-        res.status(200).json({ success: "Post liked", data: post });
+        res.status(200).json({ success: "Post reacted on", data: post });
     });
 };
 
-const commentOnPost = async (req, res) => {
-
-}
-
-const updateCommentOnPost = async (req, res) => {
-
-}
-
-const softDeletePost = async (req, res) => {
-    
-};
-
-const undeleteSoftDeletedPost = async (req, res) => {
-
-};
-
-const deletePost = async (req, res) => {
-    if (!req?.params?.id) return res.status(400).json({ message: "Accurate post required" });
-
+// do not use this method for your frontend API endpoint consumption. Instead, use the update, where you populate the form fields with data from the "getPost" method above; and use this data to fill out the form (update the said post). I implemented this method in for fun.
+const updateImageOnPost = async (req, res) => {
     let validatedData;
     try {
-        validatedData = await deletePostSchema.validateAsync({ id: req.params.id })
+        validatedData = await getPostSchema.validateAsync({ post: req.params.post, 
+                                                            image: req.params.image });
     } catch (error) {
         return res.status(400).json({ message: "Validation failed", details: `${error}` });
     }
 
-    const post = await Post.findOne({ _id: validatedData.id }).exec();
+    const post = await Post.findOne({ _id: validatedData.post }).exec();
+    
+    if (post.user != req.user_id) {
+        res.status(403).json({ message: "You do not have permission to update images on posts that do not belong to you" });
+
+    } else if (post.user == req.user_id) {
+        if (post.picture_paths.includes(validatedData.image)) {
+            post.picture_paths = post.picture_paths.filter((picture) => picture !== validatedData.image);
+
+            if (req.files.post_photos) {
+                const urls = []
+
+                const files = req.files.post_photos;
+
+                if (Array.isArray(files)) {
+                    for (const file of files) {
+                        const imageUpload = await cloudinaryImageUpload(file.tempFilePath, "frends_post_images");
+                        if (!imageUpload) return res.status(409).json({ message: "Image upload failed" });
+                        
+                        urls.push(imageUpload.secure_url)
+                    }
+                } else {
+                    const imageUpload = await cloudinaryImageUpload(files.tempFilePath, "frends_post_images");
+                    if (!imageUpload) return res.status(409).json({ message: "Image upload failed" });
+
+                    urls.push(imageUpload.secure_url)
+                }
+
+                if (urls.length) {
+                    for (const url of urls) {
+                        post.picture_paths.push(url);
+                    }
+                }
+
+                post.save((error) => {
+                    if (error) {
+                        return res.status(400).json(error);
+                    }
+                    res.status(200).json({ success: "Post image(s) updated", data: post });
+                });
+            }
+
+        } else {
+            res.status(404).json({ message: "The image you wish to replace, no longer exists in our records" })
+        }
+
+    } else if (post.user == req.user_id) {
+        res.status(403).json({ message: "You do not have permission to update images on posts that do not belong to you" })
+    }
+    
+};
+
+const softDeletePost = async (req, res) => {
+    let validatedData;
+    try {
+        validatedData = await getPostSchema.validateAsync({ post: req.params.post });
+    } catch (error) {
+        return res.status(400).json({ message: "Validation failed", details: `${error}` });
+    }
+
+    const postFound = await Post.findOne({ _id: validatedData.post }).exec();
+    if (!postFound) return res.status(404).json({ message: "Post not found" });
+
+    if (postFound.created_by != req.user_id) {
+        res.status(403).json({ message: "You do not have permission to delete comments that do not belong to you" })
+
+    } else if (postFound.created_by == req.user_id) {
+
+        if (postFound.deleted == false) {
+            postFound.deleted = true;
+            postFound.deleted_at = new Date().toISOString();
+        }
+
+        postFound.save((error) => {
+            if (error) {
+                return res.status(400).json(error);
+            }
+            res.status(200).json({message: `Post deleted` });
+        });
+    }
+};
+
+const undeleteSoftDeletedPost = async (req, res) => {
+    let validatedData;
+    try {
+        validatedData = await getPostSchema.validateAsync({ post: req.params.post });
+    } catch (error) {
+        return res.status(400).json({ message: "Validation failed", details: `${error}` });
+    }
+
+    const postFound = await Post.findOne({ _id: validatedData.post }).exec();
+    if (!postFound) return res.status(404).json({ message: "Post not found" });
+
+    if (postFound.deleted == true) {
+        postFound.deleted = false; 
+        postFound.deleted_at = ''; 
+    }
+
+    postFound.save((error) => {
+        if (error) {
+            return res.status(400).json(error);
+        }
+        res.status(200).json({message: `Post ${postFound._id} reactivated` });
+    });
+};
+
+const deletePost = async (req, res) => {
+    if (!req?.params?.post) return res.status(400).json({ message: "Accurate post required" });
+
+    let validatedData;
+    try {
+        validatedData = await getPostSchema.validateAsync({ post: req.params.post })
+    } catch (error) {
+        return res.status(400).json({ message: "Validation failed", details: `${error}` });
+    }
+
+    const post = await Post.findOne({ _id: validatedData.post }).exec();
     if (!post) {
-        return res.status(404).json({ message: `No post matches the post ${validatedData.id}` });
+        return res.status(404).json({ message: `No post matches the post ${validatedData.post}` });
     };
+
+    const comment = await Comment.find({ on_post: post._id }).exec();
+    if (!post && !comment) {
+        return res.status(404).json({ message: `Neither comment nor post exist`})
+    }
+
+    if (comment) {
+        // Delete all comments belonging to the deleted post if there are any.
+        // await comment.deleteMany();
+        await Comment.deleteMany({ on_post: post._id });
+    }
+
     const deletedPost = await post.deleteOne();
-    res.json(deletedPost);
+    res.status(200).json({ data: deletedPost, success: "Post deleted" });
 };
 
 
@@ -272,9 +407,8 @@ module.exports = {
     createPost,
     updatePost,
     updatePostAdminAccess, 
-    likePost,
-    commentOnPost,
-    updateCommentOnPost, 
+    reactOnPost, 
+    updateImageOnPost, 
     softDeletePost,
     undeleteSoftDeletedPost,
     deletePost
