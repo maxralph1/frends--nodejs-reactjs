@@ -9,6 +9,7 @@ const postSchema = new Schema({
         reactions: {
             type: Map,
             of: String,
+            // default: {}
         },
         created_by: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         deleted: Boolean,

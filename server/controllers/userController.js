@@ -1,7 +1,7 @@
-const bcrypt = require('bcrypt');
+const asyncHandler = require('express-async-handler');
+const cloudinaryImageUpload = require('../config/imageUpload/cloudinary');
 const User = require('../models/User');
 const Post = require('../models/Post');
-const cloudinaryImageUpload = require('../config/imageUpload/cloudinary');
 const searchUsersSchema = require('../requestValidators/users/searchUsersValidator');
 const getUserSchema = require('../requestValidators/users/getUserValidator');
 const createUserSchema = require('../requestValidators/users/createUserValidator');
@@ -9,14 +9,20 @@ const updateUserSchema = require('../requestValidators/users/updateUserValidator
 const addRemoveFriendSchema = require('../requestValidators/users/addRemoveFriendValidator');
 
 
-const getAllUsers = async (req, res) => {
+// @desc   Get all users
+// @route  GET /api/v1/users
+// @access Private
+const getAllUsers = asyncHandler(async (req, res) => {
     const users = await User.find().select(['-password', '-created_at', '-updated_at']).sort('-created_at').lean();
     if (!users?.length) return res.status(404).json({ message: "No users found" });
 
     res.status(200).json({ data: users });
-};
+});
 
-const searchUsers = async (req, res) => {
+// @desc   Search (find) users
+// @route  GET /api/v1/users/search/:searchKey
+// @access Public
+const searchUsers = asyncHandler(async (req, res) => {
     if (!req?.params?.searchKey) return res.status(400).json({ message: "Search key required" });
 
     let validatedData;
@@ -27,16 +33,20 @@ const searchUsers = async (req, res) => {
     }
 
     const users = await User
-        .find({$or: [{username: new RegExp(validatedData.searchKey, 'i')}, {first_name: new RegExp(validatedData.searchKey, 'i')}, {other_names: new RegExp(validatedData.searchKey, 'i')}, {last_name: new RegExp(validatedData.searchKey, 'i')}, {occupation: new RegExp(validatedData.searchKey, 'i')}, {location: new RegExp(validatedData.searchKey, 'i')}]}).select(['-password', '-email_verified', '-active', '-created_by', '-created_at', '-updated_at'])
+        .find({$or: [{username: new RegExp(validatedData.searchKey, 'i')}, {first_name: new RegExp(validatedData.searchKey, 'i')}, {other_names: new RegExp(validatedData.searchKey, 'i')}, {last_name: new RegExp(validatedData.searchKey, 'i')}, {occupation: new RegExp(validatedData.searchKey, 'i')}, {location: new RegExp(validatedData.searchKey, 'i')}]})
+        .select(['-password', '-email_verified', '-active', '-created_by', '-created_at', '-updated_at'])
         .where({ active: true })
         .lean();
     
     if (!users?.length) return res.status(404).json({ message: "No user found" });
 
     res.status(200).json({ data: users });
-};
+});
 
-const getUser = async (req, res) => {
+// @desc   Get user
+// @route  GET /api/v1/users/:user
+// @access Public
+const getUser = asyncHandler(async (req, res) => {
     if (!req?.params?.user) return res.status(400).json({ message: "Username required" });
 
     let validatedData;
@@ -54,9 +64,12 @@ const getUser = async (req, res) => {
         return res.status(404).json({ message: `No user matches ${validatedData.user}` });
     }
     res.status(200).json({ data: user });
-};
+});
 
-const getUserFriends = async (req, res) => {
+// @desc   Get User Friends
+// @route  GET /api/v1/users/:user/friends
+// @access Public
+const getUserFriends = asyncHandler(async (req, res) => {
 
     let validatedData;
     try {
@@ -89,12 +102,12 @@ const getUserFriends = async (req, res) => {
 
         res.status(200).json({ data: formattedFriends });
     }
-};
+});
 
-// @desc Create User
-// @route POST /users
-// @access Can only be accessed by admin
-const createUser = async (req, res) => {
+// @desc   Create new user (Admin access)
+// @route  POST /api/v1/users
+// @access Private
+const createUser = asyncHandler(async (req, res) => {
 
     let validatedData;
     try {
@@ -124,12 +137,23 @@ const createUser = async (req, res) => {
         return res.status(409).json({ message: `User email ${duplicateEmail.email} already exists` });
     }
 
-    const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+    let profileImageUpload;
+    let wallpaperImageUpload;
 
-    const file = req.files.profile_photo
+    if (req.files.profile_photo) {
+        const profileImage = req.files.profile_photo
 
-    const imageUpload = await cloudinaryImageUpload(file.tempFilePath, "frends_user_images");
-    if (!imageUpload) return res.status(409).json({ message: "Image upload failed" });
+        profileImageUpload = await cloudinaryImageUpload(profileImage.tempFilePath, "frends_user_images");
+        if (!profileImageUpload) return res.status(409).json({ message: "Image upload failed" });
+    }
+
+    if (req.files.wallpaper_photo) {
+        const wallpaperImage = req.files.wallpaper_photo
+
+        wallpaperImageUpload = await cloudinaryImageUpload(wallpaperImage.tempFilePath, "frends_user_images");
+        if (!wallpaperImageUpload) return res.status(409).json({ message: "Image upload failed" });
+    }
+    
 
     let accountType;
 
@@ -155,10 +179,14 @@ const createUser = async (req, res) => {
         other_names: validatedData.other_names,
         last_name: validatedData.last_name,
         email: validatedData.email,
-        password: hashedPassword,
-        picture_path: {
-            public_id: imageUpload.public_id,
-            url: imageUpload.secure_url
+        password: validatedData.password,
+        profile_image: {
+            public_id: profileImageUpload.public_id,
+            url: profileImageUpload.secure_url
+        },
+        wallpaper_image: {
+            public_id: wallpaperImageUpload.public_id,
+            url: wallpaperImageUpload.secure_url
         },
         roles: accountType,
         verified: validatedData.verified,
@@ -168,7 +196,7 @@ const createUser = async (req, res) => {
         show_friends: validatedData.show_friends, 
         followers: {},
         active: validatedData.active,
-        created_by: req.user_id
+        created_by: req.user._id
     });
 
     user.save((error) => {
@@ -177,9 +205,12 @@ const createUser = async (req, res) => {
         }
         res.status(201).json({ data: `${user.username}`, message: `User ${user.username} created` });
     });
-};
+});
 
-const updateUser = async (req, res) => {
+// @desc   Update user
+// @route  PATCH /api/v1/users/:user
+// @access Private
+const updateUser = asyncHandler(async (req, res) => {
 
     let validatedData;
     try {
@@ -198,19 +229,29 @@ const updateUser = async (req, res) => {
         return res.status(400).json({ message: "Validation failed", details: `${error}` });
     }
 
-    const hashedPassword = await bcrypt.hash(validatedData.password, 10);
-
     const userFound = await User.findOne({ username: validatedData.user }).exec();
     if (!userFound) return res.status(404).json({ message: "User not found" });
 
-    if (userFound._id != req.user_id) {
+    if (userFound._id != req.user._id) {
         res.status(403).json({ message: "You do not have permission to update user details" })
 
-    } else if (userFound._id == req.user_id) {
-        const file = req.files.profile_photo
+    } else if (userFound._id == req.user._id) {
+        let profileImageUpload;
+        let wallpaperImageUpload;
 
-        const imageUpload = await cloudinaryImageUpload(file.tempFilePath, "frends_user_images");
-        if (!imageUpload) return res.status(409).json({ message: "Image upload failed" });
+        if (req.files.profile_photo) {
+            const profileImage = req.files.profile_photo
+
+            profileImageUpload = await cloudinaryImageUpload(profileImage.tempFilePath, "frends_user_images");
+            if (!profileImageUpload) return res.status(409).json({ message: "Image upload failed" });
+        }
+
+        if (req.files.wallpaper_photo) {
+            const wallpaperImage = req.files.wallpaper_photo
+
+            wallpaperImageUpload = await cloudinaryImageUpload(wallpaperImage.tempFilePath, "frends_user_images");
+            if (!wallpaperImageUpload) return res.status(409).json({ message: "Image upload failed" });
+        }
 
         let accountType;
 
@@ -229,11 +270,15 @@ const updateUser = async (req, res) => {
         if (validatedData.other_names) userFound.other_names = validatedData.other_names;
         if (validatedData.last_name) userFound.last_name = validatedData.last_name;
         if (validatedData.email) userFound.email = validatedData.email;
-        if (validatedData.password) userFound.password = hashedPassword;
-        if (imageUpload) {
-            userFound.picture_path.public_id = imageUpload.public_id;
-            userFound.picture_path.url = imageUpload.secure_url;
-        }
+        if (validatedData.password) userFound.password = validatedData.password;
+        if (profileImageUpload) {
+            userFound.profile_image.public_id = profileImageUpload.public_id;
+            userFound.profile_image.url = profileImageUpload.secure_url;
+        };
+        if (wallpaperImageUpload) {
+            userFound.wallpaper_image.public_id = wallpaperImageUpload.public_id;
+            userFound.wallpaper_image.url = wallpaperImageUpload.secure_url;
+        };
         if (validatedData.account_type) userFound.roles = accountType;
         if (validatedData.location) userFound.location = validatedData.location;
         if (validatedData.occupation) userFound.occupation = validatedData.occupation;
@@ -246,9 +291,12 @@ const updateUser = async (req, res) => {
             res.status(200).json({ success: `User ${userFound.username} updated` });
         });
     }
-};
+});
 
-const updateUserAdminAccess = async (req, res) => {
+// @desc   Update user (Admin access)
+// @route  PUT /api/v1/users/:user
+// @access Private
+const updateUserAdminAccess = asyncHandler(async (req, res) => {
 
     let validatedData;
     try {
@@ -270,17 +318,27 @@ const updateUserAdminAccess = async (req, res) => {
                                                             deleted_at: req.body.deleted_at });
     } catch (error) {
         return res.status(400).json({ message: "Validation failed", details: `${error}` });
-    }
-
-    const hashedPassword = await bcrypt.hash(validatedData.password, 10);
+    };
 
     const userFound = await User.findOne({ username: validatedData.user }).exec();
     if (!userFound) return res.status(404).json({ message: "User not found" });
 
-    const file = req.files.profile_photo
+    let profileImageUpload;
+    let wallpaperImageUpload;
 
-    const imageUpload = await cloudinaryImageUpload(file.tempFilePath, "frends_user_images");
-    if (!imageUpload) return res.status(409).json({ message: "Image upload failed" });
+    if (req.files.profile_photo) {
+        const profileImage = req.files.profile_photo
+
+        profileImageUpload = await cloudinaryImageUpload(profileImage.tempFilePath, "frends_user_images");
+        if (!profileImageUpload) return res.status(409).json({ message: "Image upload failed" });
+    }
+
+    if (req.files.wallpaper_photo) {
+        const wallpaperImage = req.files.wallpaper_photo
+
+        wallpaperImageUpload = await cloudinaryImageUpload(wallpaperImage.tempFilePath, "frends_user_images");
+        if (!wallpaperImageUpload) return res.status(409).json({ message: "Image upload failed" });
+    }
 
     let accountType;
 
@@ -305,11 +363,15 @@ const updateUserAdminAccess = async (req, res) => {
     if (validatedData.other_names) userFound.other_names = validatedData.other_names;
     if (validatedData.last_name) userFound.last_name = validatedData.last_name;
     if (validatedData.email) userFound.email = validatedData.email;
-    if (validatedData.password) userFound.password = hashedPassword;
-    if (imageUpload) {
-        userFound.picture_path.public_id = imageUpload.public_id;
-        userFound.picture_path.url = imageUpload.secure_url;
-    }
+    if (validatedData.password) userFound.password = validatedData.password;
+    if (profileImageUpload) {
+        userFound.profile_image.public_id = profileImageUpload.public_id;
+        userFound.profile_image.url = profileImageUpload.secure_url;
+    };
+    if (wallpaperImageUpload) {
+        userFound.wallpaper_image.public_id = wallpaperImageUpload.public_id;
+        userFound.wallpaper_image.url = wallpaperImageUpload.secure_url;
+    };
     if (validatedData.account_type) userFound.roles = accountType;
     if (validatedData.verified) userFound.verified = validatedData.verified;
     if (validatedData.friends) userFound.friends = validatedData.friends;
@@ -326,9 +388,12 @@ const updateUserAdminAccess = async (req, res) => {
         }
         res.status(200).json({ data: userFound, success: `User ${userFound.username} updated` });
     });
-};
+});
 
-const addRemoveFriend = async (req, res) => {
+// @desc   Add/Remove Friend
+// @route  PATCH /api/v1/users/:userId/friend/:friendId
+// @access Private
+const addRemoveFriend = asyncHandler(async (req, res) => {
 
     let validatedData;
     try {
@@ -341,10 +406,10 @@ const addRemoveFriend = async (req, res) => {
     const user = await User.findOne({ _id: validatedData.userId }).exec();
     const friend = await User.findOne({ _id: validatedData.friendId }).exec();
 
-    if (user._id != req.user_id) {
+    if (user._id != req.user._id) {
         res.status(403).json({ message: "You do not have permission to add/remove friends that do not belong to you" })
 
-    } else if (user._id == req.user_id) {
+    } else if (user._id == req.user._id) {
     
         if (user.friends.includes(validatedData.friendId)) {
             user.friends = user.friends.filter((userId = validatedData.userId) => userId !== validatedData.friendId);
@@ -368,11 +433,14 @@ const addRemoveFriend = async (req, res) => {
         );
         if (!formattedFriends) return res.status(404).json({ message: "There are no friends to display "});
 
-        res.status(200).json(formattedFriends);
+        res.status(200).json({ data: formattedFriends });
     }
-};
+});
 
-const followUnfollowUser = async (req, res) => {
+// @desc   Follow/Unfollow Friend
+// @route  PATCH /api/v1/users/:user/follows
+// @access Private
+const followUnfollowUser = asyncHandler(async (req, res) => {
     let validatedData;
     try {
         validatedData = await getUserSchema.validateAsync({ user: req.params.user });
@@ -383,12 +451,12 @@ const followUnfollowUser = async (req, res) => {
     const user = await User.findOne({ _id: validatedData.user }).exec();
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    const isFollowing = user.followers.get(req.user_id);
+    const isFollowing = user.followers.get(req.user._id);
 
     if (!isFollowing) {
-        user.followers.set(req.user_id, true);
+        user.followers.set(req.user._id, true);
     } else {
-        user.followers.delete(req.user_id);
+        user.followers.delete(req.user._id);
     }
 
     user.save((error) => {
@@ -397,9 +465,12 @@ const followUnfollowUser = async (req, res) => {
         }
         res.status(200).json({ success: "Updated your user follow status", data: user });
     });
-};
+});
 
-const softDeleteUser = async (req, res) => {
+// @desc   Soft-Delete User (User deletes self)
+// @route  PATCH /api/v1/users/:user/delete
+// @access Private
+const softDeleteUser = asyncHandler(async (req, res) => {
     // Consider using this method for your delete instead of the "deleteUser" method below
 
     let validatedData;
@@ -412,10 +483,10 @@ const softDeleteUser = async (req, res) => {
     const userFound = await User.findOne({ username: validatedData.user }).exec();
     if (!userFound) return res.status(404).json({ message: "User not found" });
 
-    if (userFound._id != req.user_id) {
+    if (userFound._id != req.user._id) {
         res.status(403).json({ message: "You do not have permission to update user details" })
 
-    } else if (userFound._id == req.user_id) {
+    } else if (userFound._id == req.user._id) {
 
         if (userFound.active == true) {
             userFound.active = false;
@@ -427,12 +498,15 @@ const softDeleteUser = async (req, res) => {
             if (error) {
                 return res.status(400).json(error);
             }
-            res.status(200).json({message: `User ${userFound.username} inactivated / deleted` });
+            res.status(200).json({ success: `User ${userFound.username} inactivated / deleted` });
         });
     }
-}
+});
 
-const reactivateSoftDeletedUser = async (req, res) => {
+// @desc   Re-activate soft-deleted User (Admin Access)
+// @route  PATCH /api/v1/users/:user/re-activate
+// @access Private
+const reactivateSoftDeletedUser = asyncHandler(async (req, res) => {
 
     let validatedData;
     try {
@@ -455,9 +529,12 @@ const reactivateSoftDeletedUser = async (req, res) => {
         }
         res.status(200).json({message: `User ${userFound.username} reactivated` });
     });
-}
+});
 
-const deleteUser = async (req, res) => {
+// @desc   Delete User (Admin Access)
+// @route  DELETE /api/v1/users/:user
+// @access Private
+const deleteUser = asyncHandler(async (req, res) => {
 
     let validatedData;
     try {
@@ -485,7 +562,7 @@ const deleteUser = async (req, res) => {
     const deletedUser = await user.deleteOne();
 
     res.status(200).json({ data: deletedUser, success: "User deleted" });
-};
+});
 
 
 module.exports = {

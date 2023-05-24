@@ -7,6 +7,9 @@ const sendMail = require('../../mails/sendMail');
 const passwordResetMailTemplate = require('../../mails/templates/passwordResetMail');
 
 
+// @desc    Request password reset link
+// @route   POST /api/v1/auth/password-reset
+// @access  Public
 const mailPasswordResetLink = async (req, res) => {
     try {
 
@@ -40,6 +43,9 @@ const mailPasswordResetLink = async (req, res) => {
     }
 };
 
+// @desc    Verify password reset link
+// @route   POST /api/v1/auth/password-reset/:user/:token
+// @access  Public
 const verifyMailedPasswordResetLink = async (req, res) => {
     
     try {
@@ -66,9 +72,7 @@ const verifyMailedPasswordResetLink = async (req, res) => {
             return res.status(400).json({ message: "Invalid/expired link", details: `${error}` });
         }
 
-        const hashedPassword = await bcrypt.hash(validatedData.password, 10);
-
-        user.password = hashedPassword;
+        user.password = validatedData.password;
         user.password_reset_token = '';
         await user.save();
 
@@ -79,4 +83,7 @@ const verifyMailedPasswordResetLink = async (req, res) => {
 };
 
 
-module.exports = { mailPasswordResetLink, verifyMailedPasswordResetLink };
+module.exports = { 
+    mailPasswordResetLink, 
+    verifyMailedPasswordResetLink 
+};

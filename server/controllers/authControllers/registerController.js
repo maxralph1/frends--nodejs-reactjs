@@ -1,4 +1,4 @@
-const bcrypt = require('bcrypt');
+const asyncHandler = require('express-async-handler');
 const jwt = require('jsonwebtoken');
 const User = require('../../models/User');
 const sendMail = require('../../mails/sendMail');
@@ -6,7 +6,10 @@ const registerEmailConfirmMailTemplate = require('../../mails/templates/register
 const registerUserSchema = require('../../requestValidators/auth/registerUserValidator');
 
 
-const registerUser = async (req, res) => {
+// @desc    Register a new user
+// @route   POST /api/v1/auth/register
+// @access  Public
+const registerUser = asyncHandler(async (req, res) => {
     let validatedData;
     try {
         validatedData = await registerUserSchema.validateAsync({ username: req.body.username, 
@@ -25,8 +28,6 @@ const registerUser = async (req, res) => {
     } else if (duplicateEmail) {
         return res.status(409).json({ message: `User email ${duplicateEmail.email} already exists` });
     }
-
-    const hashedPassword = await bcrypt.hash(validatedData.password, 10);
 
     const emailVerifyToken = jwt.sign(
         { "username": req.body.username }, 
@@ -49,7 +50,7 @@ const registerUser = async (req, res) => {
     const user = await new User({
         username: validatedData.username, 
         email: validatedData.email, 
-        password: hashedPassword, 
+        password: validatedData.password, 
         roles: accountType, 
         email_verify_token: emailVerifyToken, 
         followers: {}
@@ -59,7 +60,7 @@ const registerUser = async (req, res) => {
         if (error) {
             return res.status(400).json({ message: "An error occured", details: `${error}` });
         }
-        res.status(201).json({ message: `User ${user.username} created` });
+        res.status(201).json({ message: `User ${user.username} created. You have been sent a verification link. Click on it to start using your account. It expires in 20 minutes.` });
     });
 
     (async function () {
@@ -70,7 +71,7 @@ const registerUser = async (req, res) => {
     })();
 
     // newAccountNotify();
-};
+});
 
 
 module.exports = { registerUser };

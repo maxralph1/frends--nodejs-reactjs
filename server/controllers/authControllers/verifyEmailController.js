@@ -1,9 +1,13 @@
+const asyncHandler = require('express-async-handler');
 const jwt = require('jsonwebtoken');
 const User = require('../../models/User');
 const verifyMailLinkAuthenticateSchema = require('../../requestValidators/auth/verifyMailLinkAuthenticateValidator')
 
 
-const verifyMailLinkAuthenticate = async (req, res) => {
+// @desc    Verify newly registered user email
+// @route   POST /api/v1/auth/verify-email/:user/:token
+// @access  Public
+const verifyMailLinkAuthenticate = asyncHandler(async (req, res) => {
     try {
         try {
             validatedData = await verifyMailLinkAuthenticateSchema.validateAsync({ username: req.params.username, 
@@ -21,7 +25,7 @@ const verifyMailLinkAuthenticate = async (req, res) => {
             return res.status(400).send("Verification failed");
         }
 
-        user.email_verified = Date.now();
+        user.email_verified = new Date().toISOString();;
         user.email_verify_token = '';
 
         await user.save();
@@ -30,7 +34,7 @@ const verifyMailLinkAuthenticate = async (req, res) => {
     } catch (error) {
         res.status(400).json({ message: "An error occured", details: `${error}` });
     }
-};
+});
 
 
 module.exports = { verifyMailLinkAuthenticate }

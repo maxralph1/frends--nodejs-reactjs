@@ -10,12 +10,11 @@ const rfs = require('rotating-file-stream');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const fileupload = require('express-fileupload'); 
-const { logEvents } = require('./config/errorLogger')
-const errorLogHandler = require('./config/errorLogHandler')
 const corsOptions = require('./config/corsOptions');
 const mongoose = require('mongoose');
 const dbConnection = require('./config/dbConnect');
 const PORT = process.env.PORT || 5000;
+const errorHandler = require('./middleware/errorHandler');
 
 
 app.use(helmet());
@@ -31,7 +30,8 @@ app.use(limiter);
 let accessLogStream = rfs.createStream('access.log', {
   interval: '1d', // rotate daily
   path: path.join(__dirname, 'log/access')
-})
+});
+
 app.use(morgan(':remote-addr - :remote-user [:date[iso]] ":method :url HTTP/:http-version" :status ":res[content-length] - :response-time ms" ":referrer" ":user-agent"', { stream: accessLogStream }))
 
 dbConnection();
@@ -57,16 +57,21 @@ app.all('*', (req, res) => {
     } else {
         res.type('txt').send('404 Not Found')
     }
-})
+});
 
-app.use(errorLogHandler)
+
+// let errorLogStream = rfs.createStream('error.log', {
+//     interval: '1d', // rotate daily
+//     path: path.join(__dirname, 'log/error')
+// });
+
+// app.use(morgan(':remote-addr - :remote-user [:date[iso]] ":method :url HTTP/:http-version" :status ":res[content-length] - :response-time ms" ":referrer" ":user-agent"', { stream: errorLogStream }));
+
+
+app.use(errorHandler);
+
 
 mongoose.connection.once('open', () => {
     console.log('Database connection established');
     app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
-});
-
-mongoose.connection.on('error', err => {
-    console.log(err)
-    logEvents(`${err.no}: ${err.code}\t${err.syscall}\t${err.hostname}`, 'mongoErrLog.log')
 });

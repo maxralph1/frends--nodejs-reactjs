@@ -6,7 +6,9 @@ const checkRoles = require('../../middleware/checkRoles');
 const commentController = require('../../controllers/commentController');
 
 
-router.post('/posts/:post', authenticated, commentController.commentOnPost);
+router.route('/posts/:post')
+        .get(commentController.getCommentsOnPost)
+        .post(authenticated, commentController.commentOnPost);
 
 router.route('/:comment/posts/:post')
         .patch(authenticated, commentController.updateCommentOnPost)
@@ -15,7 +17,6 @@ router.route('/:comment/posts/:post')
 router.post('/users/:user', authenticated, commentController.commentOnUser);
 
 router.route('/:comment/users/:user')
-        .post(authenticated, commentController.commentOnUser)
         .patch(authenticated, commentController.updateCommentOnUser)
         .put(authenticated, commentController.softDeleteCommentOnUser);
 
