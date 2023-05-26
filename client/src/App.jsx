@@ -1,17 +1,15 @@
-// import { useState } from 'react'
-// import reactLogo from './assets/react.svg'
-// import './App.css'
-import { Route, Routes } from 'react-router-dom'
-import Home from './features/Home'
+import Header from './components/Header.jsx';
+import { Outlet } from 'react-router-dom';
 
-function App() {
+const App = () => {
   return (
-      <Routes>
-        <Route>
-          <Route index element={<Home />} />
-        </Route>
-      </Routes>
-  )
-}
+    <>
+      <Header />
+      <div className='my-2'>
+        <Outlet />
+      </div>
+    </>
+  );
+};
 
-export default App
+export default App;

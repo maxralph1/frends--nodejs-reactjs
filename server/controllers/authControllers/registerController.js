@@ -60,7 +60,7 @@ const registerUser = asyncHandler(async (req, res) => {
         if (error) {
             return res.status(400).json({ message: "An error occured", details: `${error}` });
         }
-        res.status(201).json({ message: `User ${user.username} created. You have been sent a verification link. Click on it to start using your account. It expires in 20 minutes.` });
+        res.status(201).json({ success: `User ${user.username} created. You have been sent a verification link. Click on it to start using your account. It expires in 20 minutes.` });
     });
 
     (async function () {

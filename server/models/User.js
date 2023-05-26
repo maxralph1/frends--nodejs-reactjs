@@ -29,6 +29,7 @@ const userSchema = new Schema({
         occupation: String,
         email_verified: Date, 
         online: { type: Boolean, default: false },
+        show_online_status: { type: Boolean, default: true },
         last_time_active: String,
         show_friends: { type: Boolean, default: true },
         followers: {

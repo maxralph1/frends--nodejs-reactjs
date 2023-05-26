@@ -10,11 +10,11 @@ const rfs = require('rotating-file-stream');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const fileupload = require('express-fileupload'); 
+const errorHandler = require('./middleware/errorHandler');
 const corsOptions = require('./config/corsOptions');
 const mongoose = require('mongoose');
 const dbConnection = require('./config/dbConnect');
 const PORT = process.env.PORT || 5000;
-const errorHandler = require('./middleware/errorHandler');
 
 
 app.use(helmet());

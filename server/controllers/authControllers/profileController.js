@@ -36,6 +36,7 @@ const updateAuthUserProfile = asyncHandler(async (req, res) => {
                                                             password: req.body.password,
                                                             account_type: req.body.account_type, 
                                                             location: req.body.location, 
+                                                            show_online_status: req.body.show_online_status, 
                                                             show_friends: req.body.show_friends, 
                                                             occupation: req.body.occupation });
     } catch (error) {
@@ -53,6 +54,7 @@ const updateAuthUserProfile = asyncHandler(async (req, res) => {
         user.password = validatedData.password || user.password;
         user.occupation = validatedData.occupation || user.occupation;
         user.location = validatedData.location || user.location;
+        user.show_online_status = validatedData.show_online_status || user.show_online_status;
         user.show_friends = validatedData.show_friends || user.show_friends;
 
         // files and roles manipulations
@@ -116,6 +118,7 @@ const updateAuthUserProfile = asyncHandler(async (req, res) => {
             email: updatedUser.email, 
             occupation: updatedUser.occupation,
             location: updatedUser.location,
+            show_online_status: updatedUser.show_online_status, 
             show_friends: updatedUser.show_friends, 
             account_type: updatedUser.roles, 
             profile_image: updatedUser.profile_image,

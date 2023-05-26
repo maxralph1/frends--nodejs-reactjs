@@ -1,0 +1,27 @@
+{
+  "name": "frends",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server/index.js",
+    "server": "nodemon server/index.js",
+    "client": "npm run dev --prefix client",
+    "devBoth": "concurrently \"npm run server\" \"npm run client\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maxralph1/frends.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/maxralph1/frends/issues"
+  },
+  "homepage": "https://github.com/maxralph1/frends#readme",
+  "devDependencies": {
+    "concurrently": "^8.0.1"
+  }
+}
