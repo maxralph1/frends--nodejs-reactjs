@@ -12,10 +12,12 @@ const registerUserSchema = require('../../requestValidators/auth/registerUserVal
 const registerUser = asyncHandler(async (req, res) => {
     let validatedData;
     try {
-        validatedData = await registerUserSchema.validateAsync({ username: req.body.username, 
-                                                            email: req.body.email,
-                                                            password: req.body.password,
-                                                            account_type: req.body.account_type });
+        validatedData = await registerUserSchema.validateAsync({ first_name: req.body.first_name, 
+                                                                last_name: req.body.last_name,
+                                                                username: req.body.username,
+                                                                email: req.body.email,
+                                                                password: req.body.password,
+                                                                account_type: req.body.account_type });
     } catch (error) {
         return res.status(400).json({ message: "Validation failed", details: `${error}` });
     }
@@ -48,6 +50,8 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     const user = await new User({
+        first_name: validatedData.first_name, 
+        last_name: validatedData.last_name, 
         username: validatedData.username, 
         email: validatedData.email, 
         password: validatedData.password, 

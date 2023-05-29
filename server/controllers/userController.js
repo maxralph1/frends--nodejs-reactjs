@@ -47,17 +47,17 @@ const searchUsers = asyncHandler(async (req, res) => {
 // @route  GET /api/v1/users/:user
 // @access Public
 const getUser = asyncHandler(async (req, res) => {
-    if (!req?.params?.user) return res.status(400).json({ message: "Username required" });
+    if (!req?.params?.user) return res.status(400).json({ message: "User required" });
 
     let validatedData;
     try {
         validatedData = await getUserSchema.validateAsync({ user: req.params.user })
     } catch (error) {
-        return res.status(400).json({ message: "Search key validation failed", details: `${error}` });
+        return res.status(400).json({ message: "User validation failed", details: `${error}` });
     }
     
     const user = await User
-        .findOne({$or: [{username: new RegExp(validatedData.user, 'i')}, {first_name: new RegExp(validatedData.user, 'i')}, {other_names: new RegExp(validatedData.user, 'i')}, {last_name: new RegExp(validatedData.user, 'i')}]})
+        .findOne({ _id: validatedData.user })
         .where({ active: true })
         .lean();
     if (!user) {

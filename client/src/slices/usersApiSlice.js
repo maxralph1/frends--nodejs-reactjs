@@ -1,5 +1,5 @@
-import { apiSlice } from './apiSlice';
 import { AUTH_URL, USERS_URL } from '../utils/urls';
+import { apiSlice } from './apiSlice';
 
 export const userApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
@@ -37,16 +37,85 @@ export const userApiSlice = apiSlice.injectEndpoints({
         providesTags: ['User'],
         keepUnusedDataFor: 5,
     }),
-    getUserDetails: builder.query({
-        query: (username) => ({
-            url: `${USERS_URL}/${username}`,
+    searchUser: builder.query({
+        query: () => ({
+            url: `${USERS_URL}/search/${searchKey}`,
+        }),
+        providesTags: ['User'],
+        keepUnusedDataFor: 5,
+    }),
+    getUser: builder.query({
+        query: (user) => ({
+            url: `${USERS_URL}/${user}`,
         }),
         keepUnusedDataFor: 5,
+    }),
+    getUserFriends: builder.query({
+        query: (user) => ({
+            url: `${USERS_URL}/${user}/friends`,
+        }),
+        keepUnusedDataFor: 5,
+    }),
+    createUser: builder.mutation({
+      query: (data) => ({
+        url: `${USERS_URL}`,
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
     }),
     updateUser: builder.mutation({
       query: (data) => ({
         url: `${USERS_URL}/${data.userId}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
+    updateUserByAdmin: builder.mutation({
+      query: (data) => ({
+        url: `${USERS_URL}/${data.userId}`,
         method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
+    addRemoveFriend: builder.mutation({
+      query: (data) => ({
+        url: `${USERS_URL}/${data.userId}/friend/${data.friendId}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
+    followUnfollowUser: builder.mutation({
+      query: (data) => ({
+        url: `${USERS_URL}/${data.userId}/follows`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
+    softDeleteUser: builder.mutation({
+      query: (data) => ({
+        url: `${USERS_URL}/${data.userId}/delete`,
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
+    reactivateDeletedUser: builder.mutation({
+      query: (data) => ({
+        url: `${USERS_URL}/${data.userId}/re-activate`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
+    deleteUser: builder.mutation({
+      query: (data) => ({
+        url: `${USERS_URL}/${data.userId}`,
+        method: 'DELETE',
         body: data,
       }),
       invalidatesTags: ['User'],
@@ -58,5 +127,16 @@ export const {
   useLoginMutation,
   useLogoutMutation,
   useRegisterMutation,
-  useUpdateProfileMutation,
+  useUpdateProfileMutation, 
+  useGetUsersQuery, 
+  useSearchUserQuery, 
+  useGetUserQuery, 
+  useGetUserFriendsQuery, 
+  useUpdateUserMutation, 
+  useUpdateUserByAdminMutation, 
+  useAddRemoveFriendMutation, 
+  useFollowUnfollowUserMutation, 
+  useSoftDeleteUserMutation, 
+  useReactivateDeletedUserMutation, 
+  useDeleteUserMutation, 
 } = userApiSlice;

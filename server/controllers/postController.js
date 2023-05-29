@@ -10,14 +10,32 @@ const updatePostSchema = require('../requestValidators/posts/updatePostValidator
 const postReactionSchema = require('../requestValidators/posts/postReactionValidator');
 
 
+// // @desc   Get all posts
+// // @route  GET /api/v1/posts
+// // @access Public
+// const getAllPosts = asyncHandler(async (req, res) => {
+//     const posts = await Post.find().sort('-created_at').lean();
+//     if (!posts?.length) return res.status(404).json({ message: "No posts found" });
+
+//     res.status(200).json({ data: posts });
+// });
+
 // @desc   Get all posts
 // @route  GET /api/v1/posts
 // @access Public
 const getAllPosts = asyncHandler(async (req, res) => {
-    const posts = await Post.find().sort('-created_at').lean();
+    const pageSize = process.env.PAGINATION_LIMIT;
+    const page = Number(req.query.pageNumber) || 1;
+
+    const posts = await Post.find()
+        .limit(pageSize)
+        .skip(pageSize * (page - 1))
+        .sort('-created_at')
+        .lean();
+
     if (!posts?.length) return res.status(404).json({ message: "No posts found" });
 
-    res.status(200).json({ data: posts });
+    res.status(200).json({ data: posts, page, pages: Math.ceil(count / pageSize) });
 });
 
 // @desc   Get post
@@ -33,12 +51,12 @@ const getPost = asyncHandler(async (req, res) => {
         return res.status(400).json({ message: "Post key validation failed", details: `${error}` });
     }
 
-    const postFound = await Post.findOne({ _id: validatedData.post }).exec();
-    if (!postFound) {
+    const post = await Post.findOne({ _id: validatedData.post }).exec();
+    if (!post) {
         return res.status(404).json({ message: `No post matches ${validatedData.post}` });
     }
 
-    res.status(200).json({ data: postFound });
+    res.status(200).json({ data: post });
 });
 
 // @desc   Get auth user posts
