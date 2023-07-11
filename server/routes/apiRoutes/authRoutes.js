@@ -11,11 +11,13 @@ const refreshTokenController = require('../../controllers/authControllers/refres
 const loginLimiter = require('../../middleware/loginLimiter')
 
 
-router.get('/refresh-token', refreshTokenController.refreshTokenHandler );
+router.get('/refresh-token', refreshTokenController.refreshTokenHandler);
 router.post('/register', registerController.registerUser);
 router.post('/verify-email/:username/:token', verifyEmailController.verifyMailLinkAuthenticate);
 router.post('/login', loginLimiter, loginController.loginUser);
-router.get('/my-profile', authenticated, profileController.getAuthUserProfile);
+router.route('/my-profile')
+        .get(authenticated, profileController.getAuthUserProfile)
+        .put(authenticated, profileController.updateAuthUserProfile);
 router.post('/logout', logoutController.logoutUser);
 router.post('/password-reset', passwordResetController.mailPasswordResetLink);
 router.post('/password-reset/:username/:token', passwordResetController.verifyMailedPasswordResetLink);

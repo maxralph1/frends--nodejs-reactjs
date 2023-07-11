@@ -1,3 +1,4 @@
+const bcrypt = require('bcrypt');
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
@@ -9,7 +10,15 @@ const userSchema = new Schema({
         last_name: String,
         email: { type: String, required: true, minLength: 5, maxLength: 45, required: true },
         password: { type: String, required: true },
-        picture_path: { 
+        // picture_path: { 
+        //     public_id: { type: String, default: '' },
+        //     url: { type: String, default: '' }
+        // },
+        profile_image: { 
+            public_id: { type: String, default: '' },
+            url: { type: String, default: '' }
+        },
+        wallpaper_image: { 
             public_id: { type: String, default: '' },
             url: { type: String, default: '' }
         },
@@ -18,12 +27,16 @@ const userSchema = new Schema({
         friends: { type: Array, default: [] },
         location: String,
         occupation: String,
-        email_verified: Date,
-        last_time_active: {type: Date, default: Date.now},
+        email_verified: Date, 
+        online: { type: Boolean, default: false }, 
+        show_online_status: { type: Boolean, default: true },
+        // last_time_active: {type: Date, default: Date.now},
+        last_time_active: String,
         show_friends: { type: Boolean, default: true },
         followers: {
             type: Map,
             of: Boolean,
+            default: {}
         },
         password_reset_token: String,
         email_verify_token: String,
@@ -35,6 +48,19 @@ const userSchema = new Schema({
         timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
     }
 );
+
+userSchema.pre('save', async function (next) {
+    if (!this.isModified('password')) {
+        next();
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+});
+
+userSchema.methods.matchPassword = async function (enteredPassword) {
+    return await bcrypt.compare(enteredPassword, this.password);
+}
 
 
 module.exports = mongoose.model("User", userSchema);

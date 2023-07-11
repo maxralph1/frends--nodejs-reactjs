@@ -10,8 +10,7 @@ const rfs = require('rotating-file-stream');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const fileupload = require('express-fileupload'); 
-const { logEvents } = require('./config/errorLogger')
-const errorLogHandler = require('./config/errorLogHandler')
+const errorHandler = require('./middleware/errorHandler');
 const corsOptions = require('./config/corsOptions');
 const mongoose = require('mongoose');
 const dbConnection = require('./config/dbConnect');
@@ -22,7 +21,7 @@ app.use(helmet());
 
 const limiter = rateLimit({
 	windowMs: 15 * 60 * 1000, // 15 minutes
-	max: 100, // Limit each IP to 100 requests per `window` (here, per 15 minutes)
+	max: 1000, // Limit each IP to 1000 requests per `window` (here, per 15 minutes)
 	standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
 	legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
@@ -44,22 +43,22 @@ app.use(cookieParser());
 app.use(fileupload({useTempFiles: true}))
 
 app.use('/', express.static(path.join(__dirname, 'public')))
-app.use('/api', express.static(path.join(__dirname, 'public')))
+// app.use('/api', express.static(path.join(__dirname, 'public')))
 
 app.use('/api/v1', require('./routes/api'));
 
 app.all('*', (req, res) => {
-    res.status(404)
+    res.status(404);
     if (req.accepts('html')) {
-        res.sendFile(path.join(__dirname, 'views', '404.html'))
+        res.sendFile(path.join(__dirname, 'views', '404.html'));
     } else if (req.accepts('json')) {
-        res.json({ message: '404 Not Found' })
+        res.json({ message: '404 Not Found' });
     } else {
-        res.type('txt').send('404 Not Found')
+        res.type('txt').send('404 Not Found');
     }
-})
+});
 
-app.use(errorLogHandler)
+app.use(errorHandler);
 
 mongoose.connection.once('open', () => {
     console.log('Database connection established');
@@ -67,6 +66,5 @@ mongoose.connection.once('open', () => {
 });
 
 mongoose.connection.on('error', err => {
-    console.log(err)
-    logEvents(`${err.no}: ${err.code}\t${err.syscall}\t${err.hostname}`, 'mongoErrLog.log')
+    console.log(err);
 });
